@@ -5,7 +5,6 @@
 # These are REQUIRED for the plugin to function properly.
 # (Do not change or touch these unless you know what you are doing.)
 Unicodes:
-  shift-48: 
   shift-1013: 
   shift-1536: 
   background: 
@@ -25,10 +24,10 @@ Items:
     material: DIAMOND_SWORD
     custom-model-data: 1
     slot: 44 # Valid slot values: 0-89; 54-89 are the player's inventory.
-    name: '#ee0000The Gizmo Sword'
+    name: '<#ee0000>The Gizmo Sword'
     lore:
-      - '#48cfa9Lores have multi-line'
-      - '#f2991dand hex support!'
+      - '<#48cfa9>Lores have multi-line'
+      - '<#f2991d>and hex support!'
     hide-flags: true # If true, lines in the lore such as "Damage: 4" will be hidden.
     # Execute commands from the player or console, or send a message.
     # Valid prefixes: [player], [console], [message]
@@ -41,15 +40,15 @@ Items:
   another-item:
     material: GLOW_BERRIES
     slot: 53
-    name: '&6Gizmo Glow Berries'
+    name: '<gold>Gizmo Glow Berries'
     lore:
-      - '&7This is an item lore'
+      - '<gray>This is an item lore'
   a-shiny-diamond:
     material: DIAMOND
     slot: 62
-    name: '&bShiny Diamond'
+    name: '<aqua>Shiny Diamond'
     lore:
-      - '&3Property of Jeqo'
+      - '<dark_aqua>Property of Jeqo'
 
 
 
@@ -62,22 +61,22 @@ First-Join-Items:
     material: DIAMOND_SWORD
     custom-model-data: 1
     slot: 44
-    name: '#ee0000The Gizmo Sword'
+    name: '<#ee0000>The Gizmo Sword'
     lore:
-      - '#48cfa9Lores have multi-line'
-      - '#f2991dand hex support!'
+      - '<#48cfa9>Lores have multi-line'
+      - '<#f2991d>and hex support!'
     hide-flags: true
   another-item:
     material: DIRT
     custom-model-data: 1
     slot: 53
-    name: '&aDirt'
+    name: '<green>Dirt'
     lore:
-      - '&7Found on the ground.'
+      - '<gray>Found on the ground.'
   a-shiny-diamond:
     material: DIAMOND
     custom-model-data: 1
     slot: 62
-    name: '&bShiny Diamond'
+    name: '<aqua>Shiny Diamond'
     lore:
-      - '&3Property of Jeqo'
+      - '<dark_aqua>Property of Jeqo'
