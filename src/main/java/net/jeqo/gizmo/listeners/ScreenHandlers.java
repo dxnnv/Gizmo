@@ -1,8 +1,6 @@
 package net.jeqo.gizmo.listeners;
 
 import net.jeqo.gizmo.Gizmo;
-import net.jeqo.gizmo.data.Utilities;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -15,163 +13,109 @@ import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerResourcePackStatusEvent;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffectType;
+
 import java.util.Objects;
 
 import static net.jeqo.gizmo.data.Placeholders.screenTitle;
 import static net.jeqo.gizmo.data.Placeholders.screenTitleFirstJoin;
+import static net.jeqo.gizmo.data.Utilities.createComponent;
+import static net.jeqo.gizmo.data.Utilities.pullConfig;
 import static net.jeqo.gizmo.listeners.PlayerScreening.saveInv;
 
 public class ScreenHandlers implements Listener {
+    final Gizmo plugin = Gizmo.getInstance();
 
-    Gizmo plugin = Gizmo.getPlugin(Gizmo.class);
-
-
+    // config options
+    final Boolean playerInvulnerable = Objects.equals(pullConfig("player-invulnerable-during-load"), true);
+    final Boolean blindnessOnPrompt = Objects.equals(pullConfig("blindness-during-prompt"), true);
+    final Boolean kickOnDecline = Objects.equals(pullConfig("kick-on-decline"), true);
 
     // Player join handlers
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent e) {
         // Check and give blindness effect
-        if (Objects.equals(plugin.getConfig().getString("blindness-during-prompt"), "true")) {
-            e.getPlayer().addPotionEffect(PotionEffectType.BLINDNESS.createEffect(999999, 1));
-        }
+        if (blindnessOnPrompt) e.getPlayer().addPotionEffect(PotionEffectType.BLINDNESS.createEffect(999999, 1));
     }
 
 
     // Resource pack status handler
     @EventHandler
     public void onPackLoad(PlayerResourcePackStatusEvent e) {
-        Player p = e.getPlayer();
+        Player player = e.getPlayer();
 
-        if (Objects.equals(plugin.getConfig().getString("kick-on-decline"), "true")) {
+        if (kickOnDecline) {
             if (e.getStatus() == PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED) {
-                disableEffects(p);
+                player.clearActivePotionEffects();
             } else if (e.getStatus() == PlayerResourcePackStatusEvent.Status.DECLINED || e.getStatus() == PlayerResourcePackStatusEvent.Status.FAILED_DOWNLOAD) {
-                disableEffects(p);
-                p.kickPlayer(Utilities.chatTranslate(Objects.requireNonNull(plugin.getConfig().getString("messages.kick-on-decline")).replace(",", "\n").replace("[", "").replace("]", "")));
+                player.clearActivePotionEffects();
+
+                String kickMessage = (String) pullConfig("messages.kick-on-decline");
+                if (kickMessage != null)
+                    player.kick(createComponent(kickMessage.replaceAll("([|])", "")));
             }
-        } else if (Objects.equals(plugin.getConfig().getString("kick-on-decline"), "false")) {
+        } else {
             if (e.getStatus() == PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED) {
-                disableEffects(p);
+                player.clearActivePotionEffects();
             } else if (e.getStatus() == PlayerResourcePackStatusEvent.Status.DECLINED || e.getStatus() == PlayerResourcePackStatusEvent.Status.FAILED_DOWNLOAD) {
-                disableEffects(p);
+                player.clearActivePotionEffects();
                 for (String msg : plugin.getConfig().getStringList("messages.no-pack-loaded")) {
-                    p.sendMessage(Utilities.chatTranslate(msg));
+                    player.sendMessage(createComponent(msg));
                 }
             }
         }
     }
-
-
 
     // Restore player inventory event
     @EventHandler
     public void restoreInv(InventoryCloseEvent e) {
         Player p = (Player) e.getPlayer();
-        if (e.getView().getTitle().equals(screenTitle()) || e.getView().getTitle().equals(screenTitleFirstJoin())) {
-            p.getInventory().setContents((ItemStack[]) saveInv.get(p.getName()));
-        }
+        if (e.getView().title().equals(screenTitle()) || e.getView().title().equals(screenTitleFirstJoin()))
+            p.getInventory().setContents(saveInv.get(p.getUniqueId()));
     }
-
-
-
-
-
-    // Disable all potion effects
-    private void disableEffects(Player p) {
-        for (PotionEffectType effect : PotionEffectType.values()) {
-            if (p.hasPotionEffect(effect)) {
-                p.removePotionEffect(effect);
-            }
-        }
-    }
-
-
-
-
 
     // Disabled events while screen is active
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent e) {
-        Player p = e.getPlayer();
-        if (PlayerScreening.playersScreenActive.get(p.getUniqueId()) != null) {
-            if (PlayerScreening.playersScreenActive.get(p.getUniqueId())) {
-                e.setCancelled(true);
-            }
-        }
+        if (isInScreening(e.getPlayer()))
+            e.setCancelled(true);
     }
 
     @EventHandler
     public void onItemPickup(EntityPickupItemEvent e) {
-        Entity entity = e.getEntity();
-        if (entity instanceof Player) {
-            Player p = (Player) e.getEntity();
-            if (PlayerScreening.playersScreenActive.get(p.getUniqueId()) != null) {
-                if (PlayerScreening.playersScreenActive.get(p.getUniqueId())) {
-                    e.setCancelled(true);
-                }
-            }
-        }
+        if (e.getEntity() instanceof Player player && isInScreening(player))
+            e.setCancelled(true);
     }
 
     @EventHandler
     public void onSlotClick(InventoryClickEvent e) {
-        Player p = (Player) e.getWhoClicked();
-        if (PlayerScreening.playersScreenActive.get(p.getUniqueId()) != null) {
-            if (PlayerScreening.playersScreenActive.get(p.getUniqueId())) {
-                e.setCancelled(true);
-            }
-        }
+        Player player = (Player) e.getWhoClicked();
+        if (isInScreening(player))
+            e.setCancelled(true);
     }
-
-
-
-
 
     // Toggleable damage events
     @EventHandler
     public void onPlayerDamage(EntityDamageByBlockEvent e) {
-        Entity entity = e.getEntity();
-        if (Objects.equals(plugin.getConfig().getString("player-invulnerable-during-load"), "true")) {
-            if (entity instanceof Player) {
-                Player p = (Player) e.getEntity();
-                if (PlayerScreening.playersScreenActive.get(p.getUniqueId()) != null) {
-                    if (PlayerScreening.playersScreenActive.get(p.getUniqueId())) {
-                        e.setCancelled(true);
-                    }
-                }
-            }
-        }
+        if (e.getEntity() instanceof Player player && isInScreening(player))
+            e.setCancelled(true);
     }
 
     @EventHandler
     public void onEntityDamage(EntityDamageByEntityEvent e) {
-        Entity entity = e.getEntity();
-        if (Objects.equals(plugin.getConfig().getString("player-invulnerable-during-load"), "true")) {
-            if (entity instanceof Player) {
-                Player p = (Player) e.getEntity();
-                if (PlayerScreening.playersScreenActive.get(p.getUniqueId()) != null) {
-                    if (PlayerScreening.playersScreenActive.get(p.getUniqueId())) {
-                        e.setCancelled(true);
-                    }
-                }
-            }
-        }
+        if (!playerInvulnerable) return;
+        if (e.getEntity() instanceof Player player && isInScreening(player))
+            e.setCancelled(true);
     }
 
     @EventHandler
     public void onPlayerItemDamage(PlayerItemDamageEvent e) {
-        if (Objects.equals(plugin.getConfig().getString("player-invulnerable-during-load"), "true")) {
-            Player p = (Player) e.getPlayer();
-            if (PlayerScreening.playersScreenActive.get(p.getUniqueId()) != null) {
-                if (PlayerScreening.playersScreenActive.get(p.getUniqueId())) {
-                    e.setCancelled(true);
-                }
-            }
-        }
+        if (playerInvulnerable && isInScreening(e.getPlayer()))
+            e.setCancelled(true);
     }
 
-
-
+    private boolean isInScreening(Player p) {
+        if (!PlayerScreening.playersScreenActive.containsKey(p.getUniqueId())) return false;
+        return PlayerScreening.playersScreenActive.get(p.getUniqueId()).equals(Boolean.TRUE);
+    }
 }
